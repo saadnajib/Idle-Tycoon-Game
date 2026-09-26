@@ -1,0 +1,831 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#121417">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Merge Forge: Idle Tycoon</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2740%27 fill=%27%23ff7a1a%27/%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2716%27 fill=%27%23121417%27/%3E%3C/svg%3E">
+<style>
+/* ===================== Theme & base ===================== */
+:root{
+  --bg:#121417;--panel:#1c2026;--panel2:#232931;--line:#2e353f;--text:#e8ecf1;--muted:#8a94a3;
+  --orange:#ff7a1a;--blue:#2ee6ff;--green:#3dff8b;--red:#ff4d5e;--gold:#ffc83d;
+  --sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);overscroll-behavior:none}
+body{font:14px/1.25 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;transition:transform .08s ease-out}
+button:active:not(:disabled){transform:scale(.93)}
+button:disabled{cursor:default;opacity:.45}
+#app{position:relative;display:flex;flex-direction:column;gap:6px;height:100vh;height:100dvh;
+  padding:calc(6px + var(--sat)) calc(10px + var(--sar)) calc(6px + var(--sab)) calc(10px + var(--sal));
+  background:radial-gradient(120% 55% at 50% 38%,#1b1f26 0%,var(--bg) 70%)}
+
+/* ===================== HUD ===================== */
+#hud{flex:0 0 auto;display:flex;flex-direction:column;gap:6px}
+.row{display:flex;align-items:center;gap:6px}
+.chip{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:5px 10px;height:40px}
+#coinsChip{flex:1 1 auto;min-width:0}
+.coin{width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:radial-gradient(circle at 35% 35%,#ffe0a8,#ff9a3d 55%,#b44d00);box-shadow:0 0 8px #ff7a1a88}
+#coins{font-weight:800;font-size:20px;font-variant-numeric:tabular-nums}
+#cps{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap}
+#cps.boosted{color:var(--blue);font-weight:700}
+#gems{font-weight:700;font-variant-numeric:tabular-nums}
+.iconbtn{width:40px;height:40px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:18px}
+.btn{border-radius:12px;padding:8px 12px;font-weight:700;background:var(--panel2);border:1px solid var(--line);white-space:nowrap}
+.btn.primary{background:linear-gradient(180deg,#ff9142,#ff6a00);color:#1f0e00;border-color:#ffa05a;box-shadow:0 0 10px #ff7a1a44}
+.btn.blue{background:linear-gradient(180deg,#63f1ff,#12b8d6);color:#00181e;border-color:#8af5ff;box-shadow:0 0 10px #2ee6ff44}
+.btn.poor{filter:grayscale(.7);opacity:.55}
+#boostBtn{flex:1 1 auto;height:34px;padding:0 10px;font-size:13px}
+#boostBtn.active{background:#0d2a31;color:var(--blue);border-color:var(--blue);box-shadow:0 0 12px #2ee6ff55 inset}
+#skipBtn{height:26px;padding:0 8px;font-size:12px;border-radius:9px}
+.drop{position:relative;flex:1 1 auto;height:26px;background:#0c0e11;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.drop>i{position:absolute;inset:0;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,#ff7a1a55,#ff7a1acc)}
+#status{position:relative;display:block;text-align:center;line-height:24px;font-size:12px;font-weight:600;color:#cfd6df}
+#status.full{color:#fff;background:#ff4d5e55;animation:blink 1s infinite alternate}
+@keyframes blink{to{background:#ff4d5e22}}
+
+/* ===================== Board + sell zone ===================== */
+#board{flex:1 1 auto;min-height:100px;position:relative;touch-action:none}
+#sell{flex:0 0 50px;display:flex;align-items:center;justify-content:center;gap:8px;border:2px dashed #4b3a33;border-radius:14px;color:#c9a898;font-weight:700;transition:transform .12s,background .12s,border-color .12s}
+#sell svg{width:22px;height:22px}
+#sell.hot{border-color:var(--red);background:#ff4d5e2a;color:#fff;transform:scale(1.03)}
+
+/* ===================== Shop panel ===================== */
+#shop{flex:0 0 auto;height:clamp(180px,32dvh,290px);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.tabs{display:flex;flex:0 0 auto;border-bottom:1px solid var(--line)}
+.tab{flex:1;padding:9px;font-weight:700;color:var(--muted)}
+.tab.on{color:var(--orange);box-shadow:inset 0 -2px 0 var(--orange)}
+.pane{flex:1;min-height:0;overflow-y:auto;padding:8px;display:none;flex-direction:column;gap:7px;touch-action:pan-y;overscroll-behavior:contain}
+.pane.on{display:flex}
+.item{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:7px 9px}
+.item .ic{font-size:22px;width:28px;text-align:center;flex:0 0 auto}
+.item .tx{flex:1;min-width:0}
+.item b{display:block;font-size:14px}
+.item small{display:block;color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .btn{min-width:86px;flex:0 0 auto}
+#reset{align-self:center;color:var(--muted);text-decoration:underline;font-size:12px;padding:6px}
+
+/* ===================== Canvas layer ===================== */
+#fx{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:5;touch-action:none}
+
+/* ===================== Overlays: ads, IAP sheet, modal ===================== */
+.overlay{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:#000d;padding:24px}
+.adbox{width:100%;max-width:340px;text-align:center;display:flex;flex-direction:column;gap:14px}
+.adtag{align-self:center;font-size:11px;letter-spacing:1px;color:#000;background:var(--gold);padding:2px 8px;border-radius:4px;font-weight:800}
+#adMsg{font-size:22px;font-weight:800}
+#adMsg.done{color:var(--green)}
+.bar{height:10px;background:#1c2026;border-radius:6px;overflow:hidden;border:1px solid var(--line)}
+.bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),#9af6ff)}
+.adbox small{color:var(--muted)}
+#banner{position:fixed;left:50%;top:calc(8px + var(--sat));transform:translateX(-50%);z-index:20;width:min(92vw,360px);padding:10px 12px;border-radius:10px;background:#f4f4f4;color:#222;font-size:12px;display:flex;gap:8px;align-items:center;box-shadow:0 6px 20px #000a;pointer-events:none}
+#banner b{background:var(--gold);color:#000;padding:1px 5px;border-radius:3px;font-size:10px}
+.sheetwrap{align-items:flex-end;padding:0;background:#0008}
+.sheet{width:100%;max-width:480px;background:#f2f2f7;color:#000;border-radius:14px 14px 0 0;padding:14px 16px calc(18px + var(--sab));display:flex;flex-direction:column;gap:12px;animation:up .22s ease-out}
+@keyframes up{from{transform:translateY(100%)}}
+.sh-head{display:flex;justify-content:space-between;align-items:center;font-weight:700}
+.sh-head button{color:#0a84ff;font-weight:400}
+.sh-prod{display:flex;gap:12px;align-items:center;background:#fff;border-radius:12px;padding:10px}
+.sh-icon{width:54px;height:54px;border-radius:13px;background:linear-gradient(135deg,#1c2026,#121417);display:flex;align-items:center;justify-content:center;font-size:30px;color:var(--orange)}
+.sh-prod small{display:block;color:#6e6e73;font-size:12px}
+.sh-rows{background:#fff;border-radius:12px;padding:4px 12px}
+.sh-row{display:flex;justify-content:space-between;padding:8px 0;font-size:13px;color:#6e6e73}
+.sh-row+.sh-row{border-top:1px solid #e5e5ea}
+.sh-row b{color:#000}
+#shConfirm{background:#0a84ff;color:#fff;border-radius:12px;padding:13px;font-weight:600;font-size:16px}
+.sh-note{text-align:center;font-size:11px;color:#8e8e93}
+.card{width:100%;max-width:340px;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px;text-align:center;display:flex;flex-direction:column;gap:12px;box-shadow:0 0 40px #ff7a1a22}
+.card h2{color:var(--orange)}
+.card p{color:var(--muted)}
+.card .big{font-size:30px;font-weight:800;color:var(--gold)}
+.card .row .btn{flex:1;padding:12px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="hud">
+    <div class="row">
+      <div class="chip" id="coinsChip"><span class="coin"></span><span id="coins">0</span><span id="cps">+0/s</span></div>
+      <div class="chip">💎 <span id="gems">0</span></div>
+      <button class="iconbtn" id="muteBtn" aria-label="Toggle sound">🔊</button>
+    </div>
+    <div class="row"><button class="btn blue" id="boostBtn">📺 2x Earnings (4h)</button></div>
+    <div class="row">
+      <div class="drop"><i id="dropFill"></i><span id="status">Next gear</span></div>
+      <button class="btn" id="skipBtn">⏩ Skip 10💎</button>
+    </div>
+  </header>
+  <main id="board" aria-label="Merge grid"></main>
+  <div id="sell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 10v7M14 10v7"/></svg>Drop here to sell</div>
+  <section id="shop">
+    <div class="tabs"><button class="tab on" data-tab="up">Upgrades</button><button class="tab" data-tab="store">Store</button></div>
+    <div class="pane on" id="pane-up"></div>
+    <div class="pane" id="pane-store"></div>
+  </section>
+</div>
+<canvas id="fx"></canvas>
+
+<div id="banner" hidden><b>AD</b><span>Mock interstitial placeholder — buy <strong>No Ads</strong> to remove</span></div>
+
+<div id="adOverlay" class="overlay" hidden>
+  <div class="adbox">
+    <div class="adtag">AD · MOCK REWARDED VIDEO</div>
+    <div id="adMsg">Loading Ad…</div>
+    <div class="bar"><i id="adFill"></i></div>
+    <small>Placeholder — swap for AdMob rewarded video</small>
+  </div>
+</div>
+
+<div id="sheet" class="overlay sheetwrap" hidden>
+  <div class="sheet" role="dialog" aria-label="Confirm purchase">
+    <div class="sh-head"><span>Mock Store</span><button id="shCancel">Cancel</button></div>
+    <div class="sh-prod"><div class="sh-icon">⚙</div><div><b id="shName"></b><small>Merge Forge: Idle Tycoon</small><small>In-App Purchase</small></div></div>
+    <div class="sh-rows">
+      <div class="sh-row"><span>ACCOUNT</span><b>Sandbox Tester</b></div>
+      <div class="sh-row"><span>PRICE</span><b id="shPrice"></b></div>
+    </div>
+    <button id="shConfirm">Confirm with Face ID</button>
+    <div class="sh-note">Mock purchase — no payment is taken (replace with RevenueCat)</div>
+  </div>
+</div>
+
+<div id="welcome" class="overlay" hidden>
+  <div class="card">
+    <h2>Welcome back!</h2>
+    <p id="wbText"></p>
+    <div class="big" id="wbAmt"></div>
+    <div class="row"><button class="btn" id="wbOk">Collect</button><button class="btn blue" id="wbDouble">📺 Double it</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+ * Config & economy formulas
+ * ===================================================================== */
+const SAVE_KEY = 'mergeForge.save.v1', SAVE_VERSION = 1;
+const BASE_DROP = 3.0, MIN_DROP = 0.5, STEP = 1 / 60;
+const HOUR = 3600e3, OFFLINE_CAP_MS = 8 * HOUR, BOOST_MS = 4 * HOUR, BOOST_CAP_MS = 24 * HOUR;
+const INTERSTITIAL_EVERY = 90, INTERSTITIAL_SHOW = 3, FREE_GEAR_COOLDOWN_MS = 60e3;
+const COLORS = ['#ff7a1a', '#2ee6ff', '#a66bff', '#ffc83d', '#3dff8b', '#ff4fa3'];
+
+const cps = l => Math.round(l * l * Math.pow(1.6, l - 1));   // exponential income curve
+const sellValue = l => 5 * cps(l);
+const levelColor = l => COLORS[(l - 1) % COLORS.length];
+
+const UPGRADES = {
+  faster: { icon: '⏱', name: 'Faster Drops', max: Infinity, cost: l => Math.round(50 * Math.pow(1.5, l)),
+    desc: () => upgradeMaxed('faster') ? `Drop every ${MIN_DROP.toFixed(1)}s (floor)`
+      : `Drop every ${state.dropInterval.toFixed(1)}s → ${Math.max(MIN_DROP, state.dropInterval - 0.2).toFixed(1)}s`,
+    apply: () => { state.dropInterval = Math.max(MIN_DROP, Math.round((state.dropInterval - 0.2) * 100) / 100); } },
+  better: { icon: '✨', name: 'Better Gears', max: 6, cost: l => Math.round(200 * Math.pow(1.8, l)),
+    desc: () => `Lvl 2 drops ${upgradeChance()}%` + (upgradeMaxed('better') ? ' (max)' : ` → ${Math.min(60, upgradeChance() + 10)}%`) },
+  expand: { icon: '🔲', name: 'Expand Grid', max: 2, cost: l => [2500, 50000][l],
+    desc: () => upgradeMaxed('expand') ? `${state.gridSize}x${state.gridSize} (max)` : `${state.gridSize}x${state.gridSize} → ${state.gridSize + 1}x${state.gridSize + 1}`,
+    apply: () => resizeGrid(state.gridSize + 1) },
+  offline: { icon: '🌙', name: 'Offline Boost', max: 5, cost: l => Math.round(1000 * Math.pow(2.2, l)),
+    desc: () => `Offline ${offlineMult().toFixed(2)}x` + (upgradeMaxed('offline') ? ' (max)' : ` → ${(offlineMult() + 0.25).toFixed(2)}x`) }
+};
+const PRODUCTS = {
+  no_ads: { name: 'No Ads', price: '$2.99', desc: 'Removes interstitial ads forever' },
+  starter_pack: { name: 'Starter Pack', price: '$4.99', desc: '500 gems + a Level 6 gear' }
+};
+
+/* =====================================================================
+ * State (persisted) + runtime (not persisted)
+ * ===================================================================== */
+function freshState() {
+  return { version: SAVE_VERSION, coins: 0, gems: 25, gridSize: 4, cells: new Array(16).fill(0),
+    upgrades: { faster: 0, better: 0, expand: 0, offline: 0 }, dropInterval: BASE_DROP,
+    boostUntil: 0, noAds: false, lastSeen: Date.now(), muted: false, pending: [], freeGearAt: 0 };
+}
+const state = freshState();
+const rt = {
+  dropT: 0, incomeT: 0, adT: 0, lastFrame: 0, uiT: 0, shake: 0, hiddenAt: 0,
+  dirtyTimer: null, saveBlocked: false, drag: null,
+  anims: new Map(), particles: [], rings: [], floaters: [],
+  W: 0, H: 0, dpr: 1, layout: { x: 0, y: 0, size: 0, cell: 1 }
+};
+const $ = id => document.getElementById(id);
+const el = {
+  coins: $('coins'), cps: $('cps'), gems: $('gems'), mute: $('muteBtn'), boost: $('boostBtn'),
+  dropFill: $('dropFill'), status: $('status'), skip: $('skipBtn'), board: $('board'), sell: $('sell'),
+  fx: $('fx'), banner: $('banner'), adOverlay: $('adOverlay'), adMsg: $('adMsg'), adFill: $('adFill'),
+  sheet: $('sheet'), shName: $('shName'), shPrice: $('shPrice'), shConfirm: $('shConfirm'), shCancel: $('shCancel'),
+  welcome: $('welcome'), wbText: $('wbText'), wbAmt: $('wbAmt'), wbOk: $('wbOk'), wbDouble: $('wbDouble')
+};
+const ctx = el.fx.getContext('2d');
+const nowS = () => performance.now() / 1000;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+/* =====================================================================
+ * Helpers: formatting, economy queries
+ * ===================================================================== */
+function fmt(n) {
+  n = Math.floor(n);
+  if (!isFinite(n)) return '∞';
+  if (n < 1000) return String(n);
+  if (n >= 1e12) return n.toExponential(2).replace('e+', 'e');
+  const units = ['', 'K', 'M', 'B']; let i = 0, v = n;
+  while (v >= 1000 && i < 3) { v /= 1000; i++; }
+  v = v < 100 ? Math.floor(v * 10) / 10 : Math.floor(v);
+  return v + units[i];
+}
+function fmtTime(ms) {
+  const s = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), ss = s % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(ss).padStart(2, '0');
+}
+const totalCps = () => state.cells.reduce((s, l) => s + (l ? cps(l) : 0), 0);
+const boosted = () => Date.now() < state.boostUntil;
+const incomeMult = () => boosted() ? 2 : 1;
+const offlineMult = () => 0.5 + 0.25 * state.upgrades.offline;
+const upgradeChance = () => Math.min(60, 10 * state.upgrades.better);
+const hasEmpty = () => state.cells.some(v => !v);
+function upgradeMaxed(k) {
+  return state.upgrades[k] >= UPGRADES[k].max || (k === 'faster' && state.dropInterval <= MIN_DROP + 1e-9);
+}
+
+/* =====================================================================
+ * Save / load (localStorage, debounced)
+ * ===================================================================== */
+function save() {
+  if (rt.saveBlocked) return false;
+  state.lastSeen = Date.now();
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); return true; } catch (e) { return false; }
+}
+// Debounce: first change arms a 2s timer; later changes ride along (coins change every second,
+// so a resetting debounce would never fire).
+function markDirty() {
+  if (rt.dirtyTimer) return;
+  rt.dirtyTimer = setTimeout(() => { rt.dirtyTimer = null; save(); }, 2000);
+}
+function load() {
+  let d = null;
+  try { const raw = localStorage.getItem(SAVE_KEY); d = raw ? JSON.parse(raw) : null; } catch (e) { d = null; }
+  if (!d || d.version !== SAVE_VERSION) return false;
+  const f = freshState(), num = (v, def) => (typeof v === 'number' && isFinite(v)) ? v : def;
+  const int = (v, max) => clamp(Math.floor(num(v, 0)), 0, max);
+  const n = [4, 5, 6].includes(d.gridSize) ? d.gridSize : 4;
+  const up = d.upgrades || {};
+  Object.assign(state, f, {
+    coins: Math.max(0, num(d.coins, 0)), gems: Math.max(0, num(d.gems, 0)), gridSize: n,
+    cells: Array.from({ length: n * n }, (_, i) => {
+      const v = Array.isArray(d.cells) ? d.cells[i] : 0; return Number.isInteger(v) && v > 0 ? v : 0; }),
+    upgrades: { faster: int(up.faster, 99), better: int(up.better, 6), expand: int(up.expand, 2), offline: int(up.offline, 5) },
+    dropInterval: clamp(num(d.dropInterval, BASE_DROP), MIN_DROP, BASE_DROP),
+    boostUntil: num(d.boostUntil, 0), noAds: !!d.noAds, lastSeen: num(d.lastSeen, Date.now()), muted: !!d.muted,
+    pending: Array.isArray(d.pending) ? d.pending.filter(v => Number.isInteger(v) && v > 0) : [],
+    freeGearAt: num(d.freeGearAt, 0)
+  });
+  rt.drag = null; rt.anims.clear(); layout(); updateUI();
+  return true;
+}
+// Offline earnings since `since` (ms epoch): credited immediately, modal offers a rewarded double.
+function applyOffline(since) {
+  const now = Date.now(), elapsed = Math.min(Math.max(0, now - since), OFFLINE_CAP_MS);
+  const boost = state.boostUntil > since ? 2 : 1;   // keep it simple: boost active at leave time → 2x
+  const earned = Math.floor(elapsed / 1000 * totalCps() * offlineMult() * boost);
+  state.lastSeen = now;
+  if (earned <= 0) return;
+  state.coins += earned; markDirty();
+  if (elapsed > 60e3) showWelcome(earned, elapsed);
+}
+
+/* =====================================================================
+ * Audio: tiny procedural WebAudio blips (lazy, gesture-gated, never throws)
+ * ===================================================================== */
+const Sfx = (() => {
+  let ac = null;
+  function unlock() {
+    try {
+      if (!ac) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) ac = new AC(); }
+      if (ac && ac.state === 'suspended') ac.resume().catch(() => {});
+    } catch (e) { ac = null; }
+  }
+  function tone(f0, f1, dur, type = 'sine', vol = 0.06, delay = 0) {
+    if (!ac || state.muted) return;
+    try {
+      const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) { /* audio is optional */ }
+  }
+  return {
+    unlock,
+    pick: () => tone(260, 340, 0.05, 'sine', 0.04),
+    place: () => tone(200, 140, 0.06, 'sine', 0.04),
+    merge: l => { tone(300 + l * 35, 700 + l * 60, 0.16, 'triangle', 0.08); tone(620 + l * 50, 1300 + l * 70, 0.12, 'sine', 0.05, 0.06); },
+    sell: () => { tone(900, 420, 0.12, 'triangle', 0.06); tone(1200, 1500, 0.08, 'sine', 0.04, 0.08); },
+    buy: () => { tone(520, 1040, 0.1, 'square', 0.03); tone(780, 1560, 0.1, 'square', 0.03, 0.07); },
+    deny: () => tone(180, 110, 0.14, 'sawtooth', 0.03),
+    reward: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, f * 1.01, 0.14, 'triangle', 0.05, i * 0.08))
+  };
+})();
+window.addEventListener('pointerdown', Sfx.unlock, true);
+window.addEventListener('keydown', Sfx.unlock, true);
+
+/* =====================================================================
+ * Monetization — the SINGLE entry point for all ads and IAP.
+ * Everything below is a MOCK. To ship natively (Capacitor), replace the
+ * bodies with real SDK calls and keep the signatures:
+ *   showRewarded(id, onReward) -> AdMob rewarded video; call onReward only
+ *                                  on the SDK's "reward earned" callback.
+ *   purchase(sku, onSuccess)   -> RevenueCat Purchases.purchaseStoreProduct /
+ *                                  purchasePackage; call onSuccess on success.
+ *   showInterstitial()         -> AdMob interstitial (skip when state.noAds).
+ * Game code never talks to an SDK directly.
+ * ===================================================================== */
+const Monetization = {
+  busy: false,
+  showRewarded(id, onReward) {
+    if (this.busy) return false;
+    this.busy = true; cancelDrag();
+    el.adMsg.textContent = 'Loading Ad…'; el.adMsg.className = '';
+    el.adFill.style.transition = 'none'; el.adFill.style.width = '0%';
+    el.adOverlay.hidden = false;
+    void el.adFill.offsetWidth;                       // restart the CSS transition
+    el.adFill.style.transition = 'width 2.5s linear'; el.adFill.style.width = '100%';
+    setTimeout(() => {
+      el.adMsg.textContent = 'Ad complete ✓'; el.adMsg.className = 'done';
+      setTimeout(() => {
+        el.adOverlay.hidden = true; this.busy = false;
+        Sfx.reward();
+        try { onReward && onReward(id); } catch (e) { /* keep ad flow resilient */ }
+        updateUI();
+      }, 800);
+    }, 2500);
+    return true;
+  },
+  purchase(sku, onSuccess) {
+    const p = PRODUCTS[sku];
+    if (!p || this.busy) return false;
+    this.busy = true; cancelDrag();
+    el.shName.textContent = p.name + ' — ' + p.desc; el.shPrice.textContent = p.price;
+    el.shConfirm.disabled = false; el.shConfirm.textContent = 'Confirm with Face ID';
+    el.sheet.hidden = false;
+    const close = () => { el.sheet.hidden = true; this.busy = false; el.shConfirm.onclick = el.shCancel.onclick = null; };
+    el.shCancel.onclick = close;
+    el.shConfirm.onclick = () => {
+      el.shConfirm.disabled = true; el.shConfirm.textContent = 'Processing…';
+      setTimeout(() => {
+        el.shConfirm.textContent = 'Done ✓';
+        setTimeout(() => { close(); Sfx.buy(); try { onSuccess && onSuccess(sku); } catch (e) {} save(); updateUI(); }, 500);
+      }, 900);
+    };
+    return true;
+  },
+  showInterstitial() {
+    if (state.noAds || this.busy) return;
+    el.banner.hidden = false;
+    setTimeout(() => { el.banner.hidden = true; }, INTERSTITIAL_SHOW * 1000);
+  }
+};
+
+/* =====================================================================
+ * Grid operations
+ * ===================================================================== */
+function placeGear(level, idx) {
+  if (idx == null) {
+    const empty = [];
+    state.cells.forEach((v, i) => { if (!v) empty.push(i); });
+    if (!empty.length) return -1;
+    idx = empty[Math.random() * empty.length | 0];
+  }
+  state.cells[idx] = level;
+  rt.anims.set(idx, { spawn: nowS() });
+  markDirty();
+  return idx;
+}
+function dropGear() {
+  const lvl = Math.random() * 100 < upgradeChance() ? 2 : 1;
+  if (placeGear(lvl) >= 0) Sfx.place();
+}
+function giveGear(level) { if (placeGear(level) < 0) state.pending.push(level); markDirty(); }
+function resizeGrid(n) {
+  const o = state.gridSize, old = state.cells, cells = new Array(n * n).fill(0);
+  for (let r = 0; r < o; r++) for (let c = 0; c < o; c++) cells[r * n + c] = old[r * o + c];
+  cancelDrag();
+  state.gridSize = n; state.cells = cells; rt.anims.clear();
+  layout();
+}
+function merge(from, to) {
+  const lvl = state.cells[to] + 1;
+  state.cells[from] = 0; state.cells[to] = lvl;
+  rt.anims.set(to, { pop: nowS() });
+  const c = cellCenter(to), col = levelColor(lvl);
+  burst(c.x, c.y, col);
+  floatText('LVL ' + lvl + '!', c.x, c.y - rt.layout.cell * 0.35, col, 22);
+  rt.shake = 0.12;
+  Sfx.merge(lvl);
+}
+function sell(i) {
+  const l = state.cells[i]; if (!l) return;
+  const v = sellValue(l);
+  state.cells[i] = 0; state.coins += v;
+  const r = el.sell.getBoundingClientRect();
+  floatText('+' + fmt(v), r.left + r.width / 2, r.top + 4, '#ffc83d', 20);
+  Sfx.sell();
+}
+
+/* =====================================================================
+ * Simulation (fixed timestep; also handles large catch-up steps exactly)
+ * ===================================================================== */
+function update(dt) {
+  while (state.pending.length && hasEmpty()) placeGear(state.pending.shift());
+  // Drops: timer pauses while the board is full.
+  if (hasEmpty()) {
+    rt.dropT += dt;
+    while (rt.dropT >= state.dropInterval) {
+      if (!hasEmpty()) { rt.dropT = 0; break; }
+      rt.dropT -= state.dropInterval; dropGear();
+    }
+  }
+  // Income: whole-second ticks, one aggregated floater per tick batch.
+  rt.incomeT += dt;
+  if (rt.incomeT >= 1) {
+    const ticks = Math.floor(rt.incomeT); rt.incomeT -= ticks;
+    const gain = ticks * totalCps() * incomeMult();
+    if (gain > 0) {
+      state.coins += gain; markDirty();
+      const L = rt.layout;
+      floatText('+' + fmt(gain), L.x + L.size / 2 + (Math.random() - 0.5) * L.size * 0.3, L.y + L.size * 0.1, '#ffc83d', 18);
+    }
+  }
+}
+function frame(ts) {
+  let dt = (ts - rt.lastFrame) / 1000; rt.lastFrame = ts;
+  if (dt < 0) dt = 0;
+  if (dt > 1) {                   // throttled/background: one exact catch-up step
+    update(dt);
+  } else {
+    rt.acc = (rt.acc || 0) + dt;
+    let n = 0;
+    while (rt.acc >= STEP && n++ < 120) { update(STEP); rt.acc -= STEP; }
+    if (n >= 120) rt.acc = 0;
+    if (!Monetization.busy && !state.noAds && (rt.adT += dt) >= INTERSTITIAL_EVERY) { rt.adT = 0; Monetization.showInterstitial(); }
+  }
+  render(Math.min(dt, 0.05));
+  if ((rt.uiT += dt) >= 0.25) { rt.uiT = 0; updateUI(); }
+  requestAnimationFrame(frame);
+}
+
+/* =====================================================================
+ * Layout & canvas sizing (DPR aware, ResizeObserver driven)
+ * ===================================================================== */
+const sprites = new Map();
+function layout() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 3), W = window.innerWidth, H = window.innerHeight;
+  if (W !== rt.W || H !== rt.H || dpr !== rt.dpr) {
+    rt.W = W; rt.H = H; rt.dpr = dpr;
+    el.fx.width = Math.round(W * dpr); el.fx.height = Math.round(H * dpr);
+  }
+  const b = el.board.getBoundingClientRect(), size = Math.max(0, Math.min(b.width, b.height) - 4);
+  rt.layout = { x: b.left + (b.width - size) / 2, y: b.top + (b.height - size) / 2, size, cell: Math.max(1, size / state.gridSize) };
+  sprites.clear();
+}
+function cellAt(x, y) {
+  const L = rt.layout, n = state.gridSize;
+  const c = Math.floor((x - L.x) / L.cell), r = Math.floor((y - L.y) / L.cell);
+  return (c < 0 || r < 0 || c >= n || r >= n) ? -1 : r * n + c;
+}
+function cellCenter(i) {
+  const L = rt.layout, n = state.gridSize;
+  return { x: L.x + (i % n + 0.5) * L.cell, y: L.y + (Math.floor(i / n) + 0.5) * L.cell };
+}
+
+/* =====================================================================
+ * Rendering: gears (cached sprites), grid, particles, floating text
+ * ===================================================================== */
+function shade(hex, amt) {       // amt -1..1 : toward black / white
+  const n = parseInt(hex.slice(1), 16), t = amt < 0 ? 0 : 255, p = Math.abs(amt);
+  const ch = s => Math.round(((n >> s) & 255) * (1 - p) + t * p);
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
+function rr(g, x, y, w, h, r) {
+  g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+}
+function gearSprite(level) {
+  let s = sprites.get(level); if (s) return s;
+  const R = rt.layout.cell * 0.4 * rt.dpr, px = Math.ceil(R * 2.6), cv = document.createElement('canvas');
+  cv.width = cv.height = px;
+  const g = cv.getContext('2d'), col = levelColor(level), teeth = 8 + Math.min(level, 8);
+  g.translate(px / 2, px / 2);
+  const rIn = R * 0.8, stepA = Math.PI * 2 / teeth;
+  g.beginPath();
+  for (let k = 0; k < teeth; k++) {
+    const a = k * stepA;
+    g.lineTo(Math.cos(a) * rIn, Math.sin(a) * rIn);
+    g.lineTo(Math.cos(a + stepA * 0.14) * R, Math.sin(a + stepA * 0.14) * R);
+    g.lineTo(Math.cos(a + stepA * 0.44) * R, Math.sin(a + stepA * 0.44) * R);
+    g.lineTo(Math.cos(a + stepA * 0.58) * rIn, Math.sin(a + stepA * 0.58) * rIn);
+    g.arc(0, 0, rIn, a + stepA * 0.58, a + stepA);
+  }
+  g.closePath();
+  const grad = g.createRadialGradient(-R * 0.3, -R * 0.3, R * 0.1, 0, 0, R);
+  grad.addColorStop(0, shade(col, 0.45)); grad.addColorStop(0.6, col); grad.addColorStop(1, shade(col, -0.45));
+  g.shadowColor = col; g.shadowBlur = R * 0.3; g.fillStyle = grad; g.fill();
+  const tier = Math.floor((level - 1) / COLORS.length);   // each full colour cycle = brighter rim + pips
+  g.shadowBlur = 0; g.lineWidth = Math.max(1, R * (tier ? 0.06 : 0.04));
+  g.strokeStyle = tier ? 'rgba(255,255,255,.85)' : 'rgba(0,0,0,.5)'; g.stroke();
+  g.beginPath(); g.arc(0, 0, R * 0.66, 0, Math.PI * 2); g.lineWidth = R * 0.05; g.strokeStyle = 'rgba(0,0,0,.28)'; g.stroke();
+  g.fillStyle = 'rgba(10,12,15,.7)';
+  for (let k = 0; k < 4; k++) {           // asymmetric holes make rotation readable
+    const a = k * Math.PI / 2 + 0.4; g.beginPath(); g.arc(Math.cos(a) * R * 0.56, Math.sin(a) * R * 0.56, R * 0.07, 0, Math.PI * 2); g.fill();
+  }
+  g.beginPath(); g.arc(0, 0, R * 0.42, 0, Math.PI * 2); g.fillStyle = '#1c2026'; g.fill();
+  g.lineWidth = R * 0.07; g.strokeStyle = col; g.stroke();
+  for (let k = 0; k < Math.min(tier, 6); k++) {
+    const a = -Math.PI / 2 + (k - (Math.min(tier, 6) - 1) / 2) * 0.35;
+    g.beginPath(); g.arc(Math.cos(a) * R * 0.66, Math.sin(a) * R * 0.66, R * 0.06, 0, Math.PI * 2); g.fillStyle = '#fff'; g.fill();
+  }
+  s = { cv, px }; sprites.set(level, s); return s;
+}
+function drawGear(x, y, scale, level, angle, alpha) {
+  const s = gearSprite(level), size = s.px / rt.dpr * scale, R = rt.layout.cell * 0.4 * scale;
+  ctx.save(); ctx.globalAlpha = alpha; ctx.translate(x, y);
+  ctx.save(); ctx.rotate(angle); ctx.drawImage(s.cv, -size / 2, -size / 2, size, size); ctx.restore();
+  const fs = R * (level > 99 ? 0.38 : 0.52);
+  ctx.font = `800 ${fs}px system-ui,-apple-system,sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = Math.max(2, fs * 0.16); ctx.strokeStyle = 'rgba(0,0,0,.7)'; ctx.strokeText(level, 0, fs * 0.05);
+  ctx.fillStyle = '#fff'; ctx.fillText(level, 0, fs * 0.05);
+  ctx.restore();
+}
+const easeOut = p => 1 - Math.pow(1 - p, 3);
+const easeOutBack = p => 1 + 2.70158 * Math.pow(p - 1, 3) + 1.70158 * Math.pow(p - 1, 2);
+const popCurve = p => p < 0.35 ? 1 + 0.35 * easeOut(p / 0.35) : 1 + 0.35 * (1 - easeOut((p - 0.35) / 0.65));
+const spinSpeed = l => Math.min(0.5 + 0.28 * l, 5);
+
+function render(dt) {
+  const t = nowS(), L = rt.layout, n = state.gridSize, d = rt.drag;
+  ctx.setTransform(rt.dpr, 0, 0, rt.dpr, 0, 0);
+  ctx.clearRect(0, 0, rt.W, rt.H);
+  ctx.save();
+  if (rt.shake > 0) { rt.shake -= dt; ctx.translate((Math.random() * 2 - 1) * 2, (Math.random() * 2 - 1) * 2); }
+  // board panel + slots
+  rr(ctx, L.x - 2, L.y - 2, L.size + 4, L.size + 4, 14); ctx.fillStyle = '#15181d'; ctx.fill();
+  ctx.strokeStyle = '#2a3038'; ctx.lineWidth = 1; ctx.stroke();
+  const target = d ? cellAt(d.x, d.y) : -1, pad = L.cell * 0.06;
+  for (let i = 0; i < n * n; i++) {
+    const x = L.x + (i % n) * L.cell + pad, y = L.y + Math.floor(i / n) * L.cell + pad, w = L.cell - pad * 2;
+    rr(ctx, x, y, w, w, L.cell * 0.14); ctx.fillStyle = '#1b1f25'; ctx.fill();
+    ctx.lineWidth = 1; ctx.strokeStyle = '#262c35';
+    if (d && i === target && i !== d.from) {
+      const tl = state.cells[i];
+      ctx.lineWidth = 2.5; ctx.strokeStyle = tl === d.level ? '#3dff8b' : tl ? '#2ee6ff' : 'rgba(255,255,255,.45)';
+    }
+    ctx.stroke();
+  }
+  // gears
+  for (let i = 0; i < n * n; i++) {
+    const lvl = state.cells[i]; if (!lvl) continue;
+    let { x, y } = cellCenter(i), scale = 1, alpha = 1;
+    const r = Math.floor(i / n), c = i % n, dir = (r + c) % 2 ? 1 : -1;   // checkerboard = meshing gears
+    const ang = dir * t * spinSpeed(lvl) + i * 0.7;
+    if (d && d.from === i) { drawGear(x, y, 1, lvl, ang, 0.18); continue; }
+    const a = rt.anims.get(i);
+    if (a) {
+      let live = false;
+      if (a.spawn != null) { const p = (t - a.spawn) / 0.35; if (p < 1) { live = true; y -= (1 - easeOutBack(p)) * L.cell * 0.5; scale *= 0.5 + 0.5 * easeOut(p); alpha = Math.min(1, p * 2.5); } }
+      if (a.pop != null) { const p = (t - a.pop) / 0.32; if (p < 1) { live = true; scale *= popCurve(p); } }
+      if (a.ret) { const p = (t - a.ret.t) / 0.18; if (p < 1) { live = true; const e = easeOut(p); x = a.ret.x + (x - a.ret.x) * e; y = a.ret.y + (y - a.ret.y) * e; } }
+      if (!live) rt.anims.delete(i);
+    }
+    drawGear(x, y, scale, lvl, ang, alpha);
+  }
+  ctx.restore();
+  // dragged gear (can travel over the sell zone / shop)
+  if (d) drawGear(d.x, d.y, 1.15, d.level, t * spinSpeed(d.level) * 1.5, 0.95);
+  // shockwave rings + particles (additive)
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  rt.rings = rt.rings.filter(g => {
+    const p = (t - g.t) / 0.4; if (p >= 1) return false;
+    ctx.globalAlpha = 1 - p; ctx.strokeStyle = g.col; ctx.lineWidth = 5 * (1 - p) + 1;
+    ctx.beginPath(); ctx.arc(g.x, g.y, g.R * (0.4 + 1.3 * easeOut(p)), 0, Math.PI * 2); ctx.stroke(); return true;
+  });
+  rt.particles = rt.particles.filter(p => {
+    p.life -= dt; if (p.life <= 0) return false;
+    const drag = Math.pow(0.04, dt); p.vx *= drag; p.vy *= drag; p.x += p.vx * dt; p.y += p.vy * dt;
+    const k = p.life / p.max; ctx.globalAlpha = k; ctx.fillStyle = p.col;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (0.4 + 0.6 * k), 0, Math.PI * 2); ctx.fill(); return true;
+  });
+  ctx.restore();
+  // floating text: rises and fades over 900ms
+  ctx.save(); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  rt.floaters = rt.floaters.filter(f => {
+    f.life -= dt; if (f.life <= 0) return false;
+    const k = f.life / f.max; f.y -= 50 * dt;
+    ctx.globalAlpha = Math.min(1, k * 1.6);
+    ctx.font = `800 ${f.size * (1 + 0.15 * (1 - k))}px system-ui,-apple-system,sans-serif`;
+    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.strokeText(f.text, f.x, f.y);
+    ctx.fillStyle = f.col; ctx.fillText(f.text, f.x, f.y); return true;
+  });
+  ctx.restore();
+  // drop progress bar (smooth, per frame)
+  el.dropFill.style.transform = `scaleX(${hasEmpty() ? clamp(rt.dropT / state.dropInterval, 0, 1) : 1})`;
+}
+function burst(x, y, col) {
+  const R = rt.layout.cell * 0.45;
+  rt.rings.push({ x, y, col, R, t: nowS() });
+  for (let k = 0; k < 22; k++) {
+    const a = k / 22 * Math.PI * 2 + Math.random() * 0.2, sp = 160 + Math.random() * 160;
+    rt.particles.push({ x: x + Math.cos(a) * R * 0.5, y: y + Math.sin(a) * R * 0.5, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+      col, size: 2.5 + Math.random() * 2.5, life: 0.6, max: 0.6 });
+  }
+}
+function floatText(text, x, y, col, size = 18) {
+  if (rt.floaters.length > 30) rt.floaters.shift();
+  rt.floaters.push({ text, x, y, col, size, life: 0.9, max: 0.9 });
+}
+
+/* =====================================================================
+ * Input: drag & drop with Pointer Events (mouse + touch)
+ * ===================================================================== */
+function overSell(x, y) {
+  const r = el.sell.getBoundingClientRect();
+  return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+}
+function cancelDrag() {
+  const d = rt.drag; if (!d) return;
+  rt.drag = null; el.sell.classList.remove('hot');
+  try { el.board.releasePointerCapture(d.id); } catch (e) {}
+}
+el.board.addEventListener('pointerdown', e => {
+  if (rt.drag || Monetization.busy) return;
+  const i = cellAt(e.clientX, e.clientY);
+  if (i < 0 || !state.cells[i]) return;
+  e.preventDefault();
+  try { el.board.setPointerCapture(e.pointerId); } catch (err) {}
+  rt.drag = { from: i, level: state.cells[i], x: e.clientX, y: e.clientY, id: e.pointerId };
+  Sfx.pick();
+});
+el.board.addEventListener('pointermove', e => {
+  const d = rt.drag; if (!d || e.pointerId !== d.id) return;
+  d.x = e.clientX; d.y = e.clientY;
+  el.sell.classList.toggle('hot', overSell(d.x, d.y));
+});
+function endDrag(e, commit) {
+  const d = rt.drag; if (!d || e.pointerId !== d.id) return;
+  cancelDrag();
+  const x = e.clientX, y = e.clientY;
+  const snapBack = () => rt.anims.set(d.from, { ret: { x: d.x, y: d.y, t: nowS() } });
+  if (state.cells[d.from] !== d.level || !commit) return snapBack();
+  if (overSell(x, y)) { sell(d.from); markDirty(); updateUI(); return; }
+  const t = cellAt(x, y);
+  if (t < 0 || t === d.from) return snapBack();
+  const tl = state.cells[t];
+  if (tl === d.level) merge(d.from, t);
+  else {                                  // move into empty slot, or swap with a different level
+    state.cells[t] = d.level; state.cells[d.from] = tl;
+    rt.anims.set(t, { pop: nowS() - 0.2 });
+    if (tl) { const c = cellCenter(t); rt.anims.set(d.from, { ret: { x: c.x, y: c.y, t: nowS() } }); }
+    Sfx.place();
+  }
+  markDirty(); updateUI();
+}
+el.board.addEventListener('pointerup', e => endDrag(e, true));
+el.board.addEventListener('pointercancel', e => endDrag(e, false));
+el.board.addEventListener('contextmenu', e => e.preventDefault());
+
+/* =====================================================================
+ * Shop panel (Upgrades | Store) + HUD
+ * ===================================================================== */
+const rows = {};
+function addItem(pane, key, icon, title, btnClass, onClick) {
+  const div = document.createElement('div');
+  div.className = 'item';
+  div.innerHTML = `<div class="ic">${icon}</div><div class="tx"><b>${title}</b><small></small></div><button class="btn ${btnClass}" id="buy-${key}"></button>`;
+  const btn = div.querySelector('button');
+  btn.addEventListener('click', onClick);
+  $(pane).appendChild(div);
+  rows[key] = { small: div.querySelector('small'), btn };
+}
+function buyUpgrade(k) {
+  if (upgradeMaxed(k)) return;
+  const cost = UPGRADES[k].cost(state.upgrades[k]);
+  if (state.coins < cost) { Sfx.deny(); return; }
+  state.coins -= cost; state.upgrades[k]++;
+  if (UPGRADES[k].apply) UPGRADES[k].apply();
+  Sfx.buy(); save(); updateUI();
+}
+function buildShop() {
+  Object.keys(UPGRADES).forEach(k => addItem('pane-up', k, UPGRADES[k].icon, UPGRADES[k].name, 'primary', () => buyUpgrade(k)));
+  addItem('pane-store', 'free_gear', '🎁', 'Free Level 5 gear', 'blue', () => {
+    if (Date.now() < state.freeGearAt) return;
+    Monetization.showRewarded('free_gear', () => {
+      state.freeGearAt = Date.now() + FREE_GEAR_COOLDOWN_MS; giveGear(5); save();
+    });
+  });
+  addItem('pane-store', 'no_ads', '🚫', 'No Ads', 'primary', () => {
+    if (!state.noAds) Monetization.purchase('no_ads', () => { state.noAds = true; el.banner.hidden = true; });
+  });
+  addItem('pane-store', 'starter_pack', '📦', 'Starter Pack', 'primary', () => {
+    Monetization.purchase('starter_pack', () => { state.gems += 500; giveGear(6); });
+  });
+  const reset = document.createElement('button');
+  reset.id = 'reset'; reset.textContent = 'Reset save';
+  reset.addEventListener('click', () => {
+    if (!window.confirm('Reset all progress? This cannot be undone.')) return;
+    rt.saveBlocked = true;
+    try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
+    location.reload();
+  });
+  $('pane-store').appendChild(reset);
+  document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === tab));
+    document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'pane-' + tab.dataset.tab));
+  }));
+}
+function setText(node, s) { if (node.textContent !== s) node.textContent = s; }
+function updateUI() {
+  const now = Date.now(), b = boosted();
+  setText(el.coins, fmt(state.coins));
+  setText(el.cps, '+' + fmt(totalCps() * incomeMult()) + '/s' + (b ? ' ×2' : ''));
+  el.cps.classList.toggle('boosted', b);
+  setText(el.gems, fmt(state.gems));
+  setText(el.mute, state.muted ? '🔇' : '🔊');
+  el.boost.classList.toggle('active', b);
+  setText(el.boost, b ? `📺 2x active · ${fmtTime(state.boostUntil - now)} · tap +4h` : '📺 2x Earnings (4h)');
+  const full = !hasEmpty();
+  el.status.classList.toggle('full', full);
+  setText(el.status, full ? 'Board full — merge or sell' : `Next gear ${Math.max(0, state.dropInterval - rt.dropT).toFixed(1)}s`);
+  el.skip.disabled = full || state.gems < 10;
+  for (const k of Object.keys(UPGRADES)) {
+    const r = rows[k], maxed = upgradeMaxed(k), cost = maxed ? 0 : UPGRADES[k].cost(state.upgrades[k]);
+    setText(r.small, `Lv ${state.upgrades[k]} · ${UPGRADES[k].desc()}`);
+    setText(r.btn, maxed ? 'MAX' : '🪙 ' + fmt(cost));
+    r.btn.disabled = maxed;
+    r.btn.classList.toggle('poor', !maxed && state.coins < cost);
+  }
+  const cd = state.freeGearAt - now;
+  setText(rows.free_gear.small, 'Watch an ad · 60s cooldown');
+  setText(rows.free_gear.btn, cd > 0 ? '⏳ ' + fmtTime(cd) : '📺 Watch');
+  rows.free_gear.btn.disabled = cd > 0;
+  setText(rows.no_ads.small, state.noAds ? 'Owned — thanks for supporting!' : PRODUCTS.no_ads.desc);
+  setText(rows.no_ads.btn, state.noAds ? 'Owned' : PRODUCTS.no_ads.price);
+  rows.no_ads.btn.disabled = state.noAds;
+  setText(rows.starter_pack.small, PRODUCTS.starter_pack.desc);
+  setText(rows.starter_pack.btn, PRODUCTS.starter_pack.price);
+}
+el.mute.addEventListener('click', () => { state.muted = !state.muted; markDirty(); updateUI(); });
+el.skip.addEventListener('click', () => {
+  if (state.gems < 10 || !hasEmpty()) return;
+  state.gems -= 10; rt.dropT = 0; dropGear(); markDirty(); updateUI();
+});
+el.boost.addEventListener('click', () => Monetization.showRewarded('boost_2x', () => {
+  const now = Date.now();
+  state.boostUntil = Math.min(Math.max(now, state.boostUntil) + BOOST_MS, now + BOOST_CAP_MS);
+  const L = rt.layout; floatText('2x EARNINGS!', L.x + L.size / 2, L.y + L.size / 2, '#2ee6ff', 26);
+  save();
+}));
+function showWelcome(earned, elapsed) {
+  el.wbText.textContent = `Your forge kept running for ${fmtTime(elapsed)} (${offlineMult().toFixed(2)}x offline rate).`;
+  el.wbAmt.textContent = '🪙 +' + fmt(earned);
+  el.welcome.hidden = false;
+  el.wbOk.onclick = () => { el.welcome.hidden = true; };
+  el.wbDouble.onclick = () => {
+    el.welcome.hidden = true;
+    Monetization.showRewarded('offline_double', () => { state.coins += earned; save(); });
+  };
+}
+
+/* =====================================================================
+ * Lifecycle: persistence hooks, resize, boot
+ * ===================================================================== */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') { rt.hiddenAt = Date.now(); save(); return; }
+  // Back from background for a while: treat as offline (modal) and skip the live catch-up.
+  if (rt.hiddenAt && Date.now() - rt.hiddenAt > 60e3) { rt.lastFrame = performance.now(); rt.acc = 0; applyOffline(rt.hiddenAt); }
+  rt.hiddenAt = 0;
+});
+window.addEventListener('pagehide', save);
+if ('ResizeObserver' in window) new ResizeObserver(() => layout()).observe(el.board);
+window.addEventListener('resize', layout);
+window.addEventListener('orientationchange', () => setTimeout(layout, 100));
+
+buildShop();
+const loaded = load();
+if (!loaded) { placeGear(1); placeGear(1); }
+layout();
+if (loaded) applyOffline(state.lastSeen);
+updateUI();
+rt.lastFrame = performance.now();
+requestAnimationFrame(frame);
+
+// Single debug handle (the only global).
+window.MergeForge = {
+  get state() { return state; }, save, load, cellCenter, Monetization,
+  get layout() { return Object.assign({}, rt.layout); }
+};
+})();
+</script>
+</body>
+</html>
