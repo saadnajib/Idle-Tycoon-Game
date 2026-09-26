@@ -57,7 +57,10 @@ button:disabled{cursor:default;opacity:.45}
 #sell.hot{border-color:var(--red);background:#ff4d5e2a;color:#fff;transform:scale(1.03)}
 
 /* ===================== Shop panel ===================== */
-#shop{flex:0 0 auto;height:clamp(180px,32dvh,290px);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+#shop{flex:0 0 auto;
+  height:clamp(180px,32vh,290px);   /* fallback for browsers without dvh */
+  height:clamp(180px,32dvh,290px);
+  display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden}
 .tabs{display:flex;flex:0 0 auto;border-bottom:1px solid var(--line)}
 .tab{flex:1;padding:9px;font-weight:700;color:var(--muted)}
 .tab.on{color:var(--orange);box-shadow:inset 0 -2px 0 var(--orange)}
@@ -69,7 +72,18 @@ button:disabled{cursor:default;opacity:.45}
 .item b{display:block;font-size:14px}
 .item small{display:block;color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .item .btn{min-width:86px;flex:0 0 auto}
-#reset{align-self:center;color:var(--muted);text-decoration:underline;font-size:12px;padding:6px}
+#reset,#restore{align-self:center;color:var(--muted);text-decoration:underline;font-size:12px;padding:6px}
+
+/* ===================== Short landscape (phones on their side) ===================== */
+/* Board + sell zone on the left, HUD + shop on the right, so nothing is clipped at e.g. 667x375. */
+@media (orientation: landscape) and (max-height: 500px){
+  #app{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"board hud" "board shop" "sell shop";column-gap:10px;row-gap:6px}
+  #hud{grid-area:hud}
+  #board{grid-area:board;min-height:0}
+  #sell{grid-area:sell;height:44px}
+  #shop{grid-area:shop;height:auto;min-height:0}
+}
 
 /* ===================== Canvas layer ===================== */
 #fx{position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:5;touch-action:none}
@@ -172,6 +186,7 @@ button:disabled{cursor:default;opacity:.45}
  * ===================================================================== */
 const SAVE_KEY = 'mergeForge.save.v1', SAVE_VERSION = 1;
 const BASE_DROP = 3.0, MIN_DROP = 0.5, STEP = 1 / 60;
+const MAX_LEVEL = 300;   // loaded saves are clamped to this (cps stays finite)
 const HOUR = 3600e3, OFFLINE_CAP_MS = 8 * HOUR, BOOST_MS = 4 * HOUR, BOOST_CAP_MS = 24 * HOUR;
 const INTERSTITIAL_EVERY = 90, INTERSTITIAL_SHOW = 3, FREE_GEAR_COOLDOWN_MS = 60e3;
 const COLORS = ['#ff7a1a', '#2ee6ff', '#a66bff', '#ffc83d', '#3dff8b', '#ff4fa3'];
@@ -230,6 +245,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
  * ===================================================================== */
 function fmt(n) {
   n = Math.floor(n);
+  if (Number.isNaN(n)) return '0';
   if (!isFinite(n)) return '∞';
   if (n < 1000) return String(n);
   if (n >= 1e12) return n.toExponential(2).replace('e+', 'e');
@@ -277,11 +293,11 @@ function load() {
   Object.assign(state, f, {
     coins: Math.max(0, num(d.coins, 0)), gems: Math.max(0, num(d.gems, 0)), gridSize: n,
     cells: Array.from({ length: n * n }, (_, i) => {
-      const v = Array.isArray(d.cells) ? d.cells[i] : 0; return Number.isInteger(v) && v > 0 ? v : 0; }),
+      const v = Array.isArray(d.cells) ? d.cells[i] : 0; return Number.isInteger(v) && v > 0 ? Math.min(v, MAX_LEVEL) : 0; }),
     upgrades: { faster: int(up.faster, 99), better: int(up.better, 6), expand: int(up.expand, 2), offline: int(up.offline, 5) },
     dropInterval: clamp(num(d.dropInterval, BASE_DROP), MIN_DROP, BASE_DROP),
-    boostUntil: num(d.boostUntil, 0), noAds: !!d.noAds, lastSeen: num(d.lastSeen, Date.now()), muted: !!d.muted,
-    pending: Array.isArray(d.pending) ? d.pending.filter(v => Number.isInteger(v) && v > 0) : [],
+    boostUntil: num(d.boostUntil, 0), noAds: !!d.noAds, lastSeen: num(d.lastSeen, 0) > 0 ? d.lastSeen : Date.now(),   // missing/0/negative → no offline payout muted: !!d.muted,
+    pending: Array.isArray(d.pending) ? d.pending.filter(v => Number.isInteger(v) && v > 0).map(v => Math.min(v, MAX_LEVEL)) : [],
     freeGearAt: num(d.freeGearAt, 0)
   });
   rt.drag = null; rt.anims.clear(); layout(); updateUI();
@@ -290,8 +306,9 @@ function load() {
 // Offline earnings since `since` (ms epoch): credited immediately, modal offers a rewarded double.
 function applyOffline(since) {
   const now = Date.now(), elapsed = Math.min(Math.max(0, now - since), OFFLINE_CAP_MS);
-  const boost = state.boostUntil > since ? 2 : 1;   // keep it simple: boost active at leave time → 2x
-  const earned = Math.floor(elapsed / 1000 * totalCps() * offlineMult() * boost);
+  // 2x only for the part of the (capped) offline span the boost actually covered.
+  const boostedMs = clamp(state.boostUntil - since, 0, elapsed);
+  const earned = Math.floor((elapsed + boostedMs) / 1000 * totalCps() * offlineMult());
   state.lastSeen = now;
   if (earned <= 0) return;
   state.coins += earned; markDirty();
@@ -331,21 +348,35 @@ const Sfx = (() => {
 })();
 window.addEventListener('pointerdown', Sfx.unlock, true);
 window.addEventListener('keydown', Sfx.unlock, true);
+// Some browsers (iOS Safari, strict autoplay policies) only honour resume() on the *end* of a gesture.
+window.addEventListener('pointerup', Sfx.unlock, true);
+window.addEventListener('click', Sfx.unlock, true);
 
 /* =====================================================================
  * Monetization — the SINGLE entry point for all ads and IAP.
  * Everything below is a MOCK. To ship natively (Capacitor), replace the
  * bodies with real SDK calls and keep the signatures:
- *   showRewarded(id, onReward) -> AdMob rewarded video; call onReward only
- *                                  on the SDK's "reward earned" callback.
+ *   showRewarded(id, onReward, onDismiss)
+ *                              -> AdMob rewarded video; call onReward only
+ *                                 on the SDK's "reward earned" callback, and
+ *                                 onDismiss (optional) when the ad is closed,
+ *                                 skipped or fails to load without a reward.
+ *                                 Returns false if the ad could not be shown.
  *   purchase(sku, onSuccess)   -> RevenueCat Purchases.purchaseStoreProduct /
- *                                  purchasePackage; call onSuccess on success.
+ *                                 purchasePackage; call onSuccess on success.
+ *   restorePurchases(onDone)   -> RevenueCat Purchases.restorePurchases();
+ *                                 set entitlements, then call onDone.
  *   showInterstitial()         -> AdMob interstitial (skip when state.noAds).
+ * On device, state.noAds must come from the RevenueCat entitlement
+ * (customerInfo.entitlements.active), re-checked on launch and on restore,
+ * NOT from the localStorage save, which is only a cache and is user-editable.
  * Game code never talks to an SDK directly.
  * ===================================================================== */
 const Monetization = {
   busy: false,
-  showRewarded(id, onReward) {
+  // onDismiss: optional; a real SDK calls it when the ad closes without a reward
+  // (skipped, failed to load). The mock always rewards, so it never calls it.
+  showRewarded(id, onReward, onDismiss) {
     if (this.busy) return false;
     this.busy = true; cancelDrag();
     el.adMsg.textContent = 'Loading Ad…'; el.adMsg.className = '';
@@ -380,6 +411,18 @@ const Monetization = {
         setTimeout(() => { close(); Sfx.buy(); try { onSuccess && onSuccess(sku); } catch (e) {} save(); updateUI(); }, 500);
       }, 900);
     };
+    return true;
+  },
+  // Mock: nothing to fetch, so it just re-reads the cached noAds flag. On device,
+  // call Purchases.restorePurchases() and set state.noAds from the RevenueCat
+  // "no_ads" entitlement (never trust the save for this), then call onDone.
+  restorePurchases(onDone) {
+    if (this.busy) return false;
+    const restored = { noAds: !!state.noAds };
+    state.noAds = restored.noAds;
+    if (state.noAds) el.banner.hidden = true;
+    try { onDone && onDone(restored); } catch (e) {}
+    updateUI();
     return true;
   },
   showInterstitial() {
@@ -439,6 +482,9 @@ function sell(i) {
  * Simulation (fixed timestep; also handles large catch-up steps exactly)
  * ===================================================================== */
 function update(dt) {
+  // Income for this step uses the board as it was at the START of the step, so a long
+  // catch-up step doesn't pay the whole span for gears that only dropped during it.
+  const stepCps = totalCps();
   while (state.pending.length && hasEmpty()) placeGear(state.pending.shift());
   // Drops: timer pauses while the board is full.
   if (hasEmpty()) {
@@ -452,7 +498,7 @@ function update(dt) {
   rt.incomeT += dt;
   if (rt.incomeT >= 1) {
     const ticks = Math.floor(rt.incomeT); rt.incomeT -= ticks;
-    const gain = ticks * totalCps() * incomeMult();
+    const gain = ticks * stepCps * incomeMult();
     if (gain > 0) {
       state.coins += gain; markDirty();
       const L = rt.layout;
@@ -669,6 +715,8 @@ el.board.addEventListener('pointerdown', e => {
 });
 el.board.addEventListener('pointermove', e => {
   const d = rt.drag; if (!d || e.pointerId !== d.id) return;
+  // Mouse released outside the window/iframe: no pointerup ever arrives.
+  if (e.pointerType === 'mouse' && e.buttons === 0) return endDrag(e, false);
   d.x = e.clientX; d.y = e.clientY;
   el.sell.classList.toggle('hot', overSell(d.x, d.y));
 });
@@ -693,6 +741,9 @@ function endDrag(e, commit) {
 }
 el.board.addEventListener('pointerup', e => endDrag(e, true));
 el.board.addEventListener('pointercancel', e => endDrag(e, false));
+// Capture lost without pointerup/cancel (e.g. OS gesture, element change): never leave a drag stuck.
+el.board.addEventListener('lostpointercapture', e => endDrag(e, false));
+window.addEventListener('blur', cancelDrag);
 el.board.addEventListener('contextmenu', e => e.preventDefault());
 
 /* =====================================================================
@@ -738,6 +789,13 @@ function buildShop() {
     try { localStorage.removeItem(SAVE_KEY); } catch (e) {}
     location.reload();
   });
+  const restore = document.createElement('button');
+  restore.id = 'restore'; restore.textContent = 'Restore purchases';
+  restore.addEventListener('click', () => Monetization.restorePurchases(r => {
+    const b = restore.getBoundingClientRect();
+    floatText(r.noAds ? 'Purchases restored' : 'Nothing to restore', b.left + b.width / 2, b.top, '#2ee6ff', 16);
+  }));
+  $('pane-store').appendChild(restore);
   $('pane-store').appendChild(reset);
   document.querySelectorAll('.tab').forEach(tab => tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === tab));
@@ -792,8 +850,8 @@ function showWelcome(earned, elapsed) {
   el.welcome.hidden = false;
   el.wbOk.onclick = () => { el.welcome.hidden = true; };
   el.wbDouble.onclick = () => {
-    el.welcome.hidden = true;
-    Monetization.showRewarded('offline_double', () => { state.coins += earned; save(); });
+    // Only close the modal if the ad actually started; otherwise the player can still collect / retry.
+    if (Monetization.showRewarded('offline_double', () => { state.coins += earned; save(); })) el.welcome.hidden = true;
   };
 }
 
@@ -801,7 +859,7 @@ function showWelcome(earned, elapsed) {
  * Lifecycle: persistence hooks, resize, boot
  * ===================================================================== */
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') { rt.hiddenAt = Date.now(); save(); return; }
+  if (document.visibilityState === 'hidden') { cancelDrag(); rt.hiddenAt = Date.now(); save(); return; }
   // Back from background for a while: treat as offline (modal) and skip the live catch-up.
   if (rt.hiddenAt && Date.now() - rt.hiddenAt > 60e3) { rt.lastFrame = performance.now(); rt.acc = 0; applyOffline(rt.hiddenAt); }
   rt.hiddenAt = 0;
