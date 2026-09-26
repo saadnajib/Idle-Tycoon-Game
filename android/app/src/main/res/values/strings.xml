@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ribbon</string>
+    <string name="title_activity_main">Ribbon</string>
+    <string name="package_name">com.saadnajib.ribbon</string>
+    <string name="custom_url_scheme">com.saadnajib.ribbon</string>
+</resources>

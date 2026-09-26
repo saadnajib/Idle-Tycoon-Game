@@ -129,6 +129,25 @@
 (() => {
 'use strict';
 
+// Native bridge (Capacitor). No-ops in a plain browser; uses the global plugin bridge, no imports.
+const Native = (() => {
+  let isNative = false;
+  try { isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()); } catch (e) { /* ignore */ }
+  const plugin = name => { try { return (window.Capacitor.Plugins || {})[name]; } catch (e) { return null; } };
+  let splashHidden = false;
+  return {
+    isNative,
+    deathHaptic() {
+      if (!isNative) return;
+      try { const H = plugin('Haptics'); if (H) { const p = H.impact({ style: 'HEAVY' }); if (p && p.catch) p.catch(() => {}); } } catch (e) { /* ignore */ }
+    },
+    hideSplash() {
+      if (!isNative || splashHidden) return; splashHidden = true;
+      try { const SS = plugin('SplashScreen'); if (SS) { const p = SS.hide(); if (p && p.catch) p.catch(() => {}); } } catch (e) { /* ignore */ }
+    },
+  };
+})();
+
 // =====================================================================
 // TUNING — every gameplay/visual constant lives here
 // =====================================================================
@@ -437,6 +456,7 @@ function die() {
   save();
   Sfx.death();
   try { if (navigator.vibrate) navigator.vibrate(40); } catch (e) { /* ignore */ }
+  Native.deathHaptic();
   UI.phase();
 }
 function goLimp() {
@@ -944,6 +964,7 @@ function frame(now) {
   }
   render(S.manual || S.paused ? 1 : acc / T.step);
   UI.tick();
+  Native.hideSplash();
   const ms = performance.now() - t0; S.perf.last = ms; S.perf.sum += ms; S.perf.frames++;
 }
 function startLoop() { if (running) return; running = true; last = 0; raf = requestAnimationFrame(frame); }

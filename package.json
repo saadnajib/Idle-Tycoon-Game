@@ -1,0 +1,29 @@
+{
+  "name": "ribbon",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Ribbon: a one-tap canvas game, wrapped with Capacitor for iOS and Android",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "sync": "npm run build && npx cap sync",
+    "ios": "npx cap open ios",
+    "android": "npx cap open android",
+    "serve": "node scripts/serve.js",
+    "icons": "node scripts/make-icons.js",
+    "assets": "npx capacitor-assets generate --ios --android"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/ios": "^8.5.2",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@capacitor/status-bar": "^8.0.3"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5"
+  }
+}

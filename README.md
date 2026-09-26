@@ -62,3 +62,20 @@ If a rewarded continue completes while the tab is hidden, the run resumes **paus
 `window.Ribbon = { state, TUNING, save, load, restart(seed?), flap, step(dtSeconds), solidCount(n) }`
 
 `step` advances the simulation in fixed steps and switches the rAF loop to render-only mode (`state.manual = true`). Set `Ribbon.state.manual = false` to hand control back to real time.
+
+## Native build
+
+The repo is also a Capacitor 8 project (`com.saadnajib.ribbon`) with generated `ios/` (Swift Package Manager, no CocoaPods) and `android/` projects. The web game stays in `index.html`.
+
+```sh
+npm i
+npm run build     # copies index.html to www/ (www/ is not in git)
+npm run sync      # build + npx cap sync
+npm run ios       # open in Xcode (Mac only)
+npm run android   # open in Android Studio
+npm run serve     # serve www/ at http://localhost:8080
+npm run icons     # redraw assets/icon.png and assets/splash.png
+npm run assets    # regenerate all native icon and splash sizes from assets/
+```
+
+On native, the game hides the splash on its first frame and plays a heavy haptic on death. Both use the global `Capacitor.Plugins` bridge and do nothing in a plain browser. The monetization mocks **must** be replaced or removed before store submission. See [PUBLISHING.md](PUBLISHING.md) for the full App Store and Google Play checklist.
